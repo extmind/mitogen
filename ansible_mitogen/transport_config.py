@@ -448,13 +448,22 @@ class PlayContextSpec(Spec):
             rediscover_python=rediscover_python)
 
     def private_key_file(self):
-        return self._play_context.private_key_file
+        try:
+            return self._play_context.private_key_file
+        except AttributeError:
+            return self._connection.get_option('private_key_file')
 
     def ssh_executable(self):
-        return self._play_context.ssh_executable
+        try:
+            return self._play_context.ssh_executable
+        except AttributeError:
+            return self._connection.get_option('ssh_executable')
 
     def timeout(self):
-        return self._play_context.timeout
+        try:
+            return self._play_context.timeout
+        except AttributeError:
+            return self._connection.get_option('timeout')
 
     def ansible_ssh_timeout(self):
         return (
@@ -464,13 +473,21 @@ class PlayContextSpec(Spec):
         )
 
     def ssh_args(self):
+        if hasattr(self._play_context, 'ssh_executable'):
+            args = (
+                    getattr(self._play_context, 'ssh_args', ''),
+                    getattr(self._play_context, 'ssh_common_args', ''),
+                    getattr(self._play_context, 'ssh_extra_args', '')
+                )
+        else:
+            args = (
+                    self._connection.get_option('ssh_args'),
+                    self._connection.get_option('ssh_common_args'),
+                    self._connection.get_option('ssh_extra_args')
+                )
         return [
             mitogen.core.to_text(term)
-            for s in (
-                getattr(self._play_context, 'ssh_args', ''),
-                getattr(self._play_context, 'ssh_common_args', ''),
-                getattr(self._play_context, 'ssh_extra_args', '')
-            )
+            for s in args
             for term in ansible.utils.shlex.shlex_split(s or '')
         ]
 
